@@ -20,7 +20,7 @@ class ArticlesController extends AppController
 
     public function view($slug)
     {
-        $article = $this->Articles->findBySlug($slug)->firstOrFail();
+        $article = $this->Articles->findBySlug($slug)->contain(['Tags'])->firstOrFail();
         $this->set(compact('article'));
     }
 
@@ -35,26 +35,38 @@ class ArticlesController extends AppController
             $article->user_id = 1;
 
             if ($this->Articles->save($article)) {
-                $this->Flash->success(__('Your article has been saved.'));
+                $this->Flash->success(__('Votre article a été sauvegardé.'));
                 return $this->redirect(['action' => 'index']);
             }
-            $this->Flash->error(__('Unable to add your article.'));
+            $this->Flash->error(__('Impossible de sauvegarder l\'article.'));
         }
+        // Récupère une liste des tags.
+        $tags = $this->Articles->Tags->find('list');
+
+        // Passe les tags au context de la view
+        $this->set('tags', $tags);
+
         $this->set('article', $article);
     }
 
     public function edit($slug)
     {
-        $article = $this->Articles->findBySlug($slug)->firstOrFail();
+        $article = $this->Articles->findBySlug($slug)->contain(['Tags'])->firstOrFail();
         if ($this->request->is(['post', 'put'])) {
             $this->Articles->patchEntity($article, $this->request->getData());
             if ($this->Articles->save($article)) {
-                $this->Flash->success(__('Your article has been updated.'));
+                $this->Flash->success(__('Votre article a été modifié.'));
                 return $this->redirect(['action' => 'index']);
             }
-            $this->Flash->error(__('Unable to update your article.'));
+            $this->Flash->error(__('Impossible de mettre à jour votre article.'));
         }
-
+    
+        // Récupère une liste des tags.
+        $tags = $this->Articles->Tags->find('list');
+    
+        // Passe les tags au context de la view
+        $this->set('tags', $tags);
+    
         $this->set('article', $article);
     }
 
@@ -67,5 +79,19 @@ class ArticlesController extends AppController
             $this->Flash->success(__('The {0} article has been deleted.', $article->title));
             return $this->redirect(['action' => 'index']);
         }
+    }
+
+    public function tags(...$tags)
+    {
+        // Use the ArticlesTable to find tagged articles.
+        $articles = $this->Articles->find('tagged', [
+            'tags' => $tags
+        ]);
+
+        // Pass variables into the view template context.
+        $this->set([
+            'articles' => $articles,
+            'tags' => $tags
+        ]);
     }
 }

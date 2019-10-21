@@ -32,3 +32,12 @@ myapp-php-fpm:
     - ./php-fpm/php-ini-overrides.ini:/etc/php/7.1/fpm/conf.d/99-overrides.ini
   links:
     - myapp-mysql
+
+  mailer_rabbitmq:
+      image: rabbitmq:3.6-management
+      hostname: rabbit-node-1
+      ports:
+          - 60005:15672
+      environment:
+          - RABBITMQ_DEFAULT_USER=admin
+          - RABBITMQ_DEFAULT_PASS=admin
