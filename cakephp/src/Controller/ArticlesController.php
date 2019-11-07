@@ -12,6 +12,27 @@ class ArticlesController extends AppController
         $this->loadComponent('Flash');
     }
 
+    public function isAuthorized($user)
+    {
+        $action = $this->request->getParam('action');
+        // Les actions 'add' et 'tags' sont toujours autorisés pour les utilisateur
+        // authentifiés sur l'application
+        if (in_array($action, ['add', 'tags'])) {
+            return true;
+        }
+
+        // Toutes les autres actions nécessitent un slug
+        $slug = $this->request->getParam('pass.0');
+        if (!$slug) {
+            return false;
+        }
+
+        // On vérifie que l'article appartient à l'utilisateur connecté
+        $article = $this->Articles->findBySlug($slug)->first();
+
+        return $article->user_id === $user['id'];
+    }
+
     public function index()
     {
         $articles = $this->Paginator->paginate($this->Articles->find());
@@ -29,44 +50,59 @@ class ArticlesController extends AppController
         $article = $this->Articles->newEntity();
         if ($this->request->is('post')) {
             $article = $this->Articles->patchEntity($article, $this->request->getData());
-
-            // Hardcoding the user_id is temporary, and will be removed later
-            // when we build authentication out.
-            $article->user_id = 1;
-
+    
+            $article->user_id = $this->Auth->user('id');
+    
             if ($this->Articles->save($article)) {
                 $this->Flash->success(__('Votre article a été sauvegardé.'));
                 return $this->redirect(['action' => 'index']);
             }
-            $this->Flash->error(__('Impossible de sauvegarder l\'article.'));
+            $this->Flash->error(__('Impossible d\'ajouter votre article.'));
         }
-        // Récupère une liste des tags.
         $tags = $this->Articles->Tags->find('list');
 
-        // Passe les tags au context de la view
         $this->set('tags', $tags);
-
         $this->set('article', $article);
     }
 
     public function edit($slug)
     {
-        $article = $this->Articles->findBySlug($slug)->contain(['Tags'])->firstOrFail();
+    //     $article = $this->Articles->findBySlug($slug)->contain(['Tags'])->firstOrFail();
+    //     if ($this->request->is(['post', 'put'])) {
+    //         $this->Articles->patchEntity($article, $this->request->getData());
+    //         if ($this->Articles->save($article)) {
+    //             $this->Flash->success(__('Votre article a été modifié.'));
+    //             return $this->redirect(['action' => 'index']);
+    //         }
+    //         $this->Flash->error(__('Impossible de mettre à jour votre article.'));
+    //     }
+    
+    //     // Récupère une liste des tags.
+    //     $tags = $this->Articles->Tags->find('list');
+    
+    //     // Passe les tags au context de la view
+    //     $this->set('tags', $tags);
+    //     $this->set('article', $article);
+
+        $article = $this->Articles
+        ->findBySlug($slug)
+        ->contain('Tags') // Charge les tags associés
+        ->firstOrFail();
+
         if ($this->request->is(['post', 'put'])) {
-            $this->Articles->patchEntity($article, $this->request->getData());
+            $this->Articles->patchEntity($article, $this->request->getData(), [
+                // Ajouté : Empêche la modification du user_id.
+                'accessibleFields' => ['user_id' => false]
+            ]);
             if ($this->Articles->save($article)) {
                 $this->Flash->success(__('Votre article a été modifié.'));
                 return $this->redirect(['action' => 'index']);
             }
-            $this->Flash->error(__('Impossible de mettre à jour votre article.'));
+            $this->Flash->error(__('Impossible de mettre à jour l\'article.'));
         }
-    
-        // Récupère une liste des tags.
         $tags = $this->Articles->Tags->find('list');
-    
-        // Passe les tags au context de la view
+
         $this->set('tags', $tags);
-    
         $this->set('article', $article);
     }
 

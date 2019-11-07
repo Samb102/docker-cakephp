@@ -36,6 +36,12 @@ class ArticlesTable extends Table
             $entity->tags = $this->_buildTags($entity->tag_string);
         }
     
+        if ($entity->isNew() && !$entity->slug) {
+            $sluggedTitle = Text::slug($entity->title);
+            // On ne garde que le nombre de caractère correspondant à la longueur
+            // maximum définie dans notre schéma
+            $entity->slug = substr($sluggedTitle, 0, 191);
+        }
         // Other code
     }
     
